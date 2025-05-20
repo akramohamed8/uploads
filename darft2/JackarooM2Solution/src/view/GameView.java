@@ -38,6 +38,7 @@ public class GameView {
     private Label zoneLabel;
     private CellClickListener cellClickListener;
     private CardClickListener cardClickListener;
+    private final Board boardModel;
 
     public interface CellClickListener {
         void onCellClick(String zone, int position);
@@ -55,7 +56,8 @@ public class GameView {
         this.cardClickListener = listener;
     }
 
-    public GameView() {
+    public GameView(Board boardModel) {
+        this.boardModel = boardModel;
         root = new BorderPane();
         root.setPadding(new Insets(20));
         
@@ -94,54 +96,48 @@ public class GameView {
     }
 
     private void setupBoard() {
-        // Use a Pane for absolute positioning
         Pane rectangularBoard = new Pane();
-        rectangularBoard.setPrefSize(800, 800);
+        rectangularBoard.setPrefSize(900, 900);
         rectangularBoard.setStyle("-fx-background-color: #bfa76f; -fx-border-color: #7a5c2e; -fx-border-width: 12px;");
         board.getChildren().clear();
         board.getChildren().add(rectangularBoard);
 
-        double cellSize = 60;
-        int trackCells = 40; // Number of cells on the track
-        double boardWidth = 800;
-        double boardHeight = 800;
-        double trackWidth = boardWidth - 2 * cellSize;
-        double trackHeight = boardHeight - 2 * cellSize;
+        double cellSize = 38;
+        int trackCells = 100;
+        double boardWidth = 900;
+        double boardHeight = 900;
+        double margin = 60;
+        double trackWidth = boardWidth - 2 * margin;
+        double trackHeight = boardHeight - 2 * margin;
+        int cellsPerSide = trackCells / 4; // 25
 
-        // Calculate positions for track cells
+        // Draw 100 track cells in a rectangular loop
         for (int i = 0; i < trackCells; i++) {
             double x, y;
-            String style = "-fx-background-color: #e6e2d3; -fx-border-color: #7a5c2e; -fx-border-width: 2px; -fx-background-radius: 20px; -fx-border-radius: 20px;";
-            
-            // Top row (left to right)
-            if (i < 10) {
-                x = cellSize + (i * (trackWidth / 10));
-                y = cellSize;
+            String style = "-fx-background-color: #e6e2d3; -fx-border-color: #7a5c2e; -fx-border-width: 1.5px; -fx-background-radius: 14px; -fx-border-radius: 14px;";
+            Cell cellModel = boardModel.getTrack().get(i);
+            if (i < cellsPerSide) {
+                x = margin + (i * (trackWidth / (cellsPerSide - 1)));
+                y = margin;
+            } else if (i < 2 * cellsPerSide) {
+                x = boardWidth - margin;
+                y = margin + ((i - cellsPerSide) * (trackHeight / (cellsPerSide - 1)));
+            } else if (i < 3 * cellsPerSide) {
+                x = boardWidth - margin - ((i - 2 * cellsPerSide) * (trackWidth / (cellsPerSide - 1)));
+                y = boardHeight - margin;
+            } else {
+                x = margin;
+                y = boardHeight - margin - ((i - 3 * cellsPerSide) * (trackHeight / (cellsPerSide - 1)));
             }
-            // Right column (top to bottom)
-            else if (i < 20) {
-                x = boardWidth - cellSize;
-                y = cellSize + ((i - 10) * (trackHeight / 10));
+            if (cellModel.getCellType() == engine.board.CellType.BASE) {
+                style += " -fx-border-color: #1e90ff; -fx-border-width: 3px; -fx-background-color: #b3e0ff;";
             }
-            // Bottom row (right to left)
-            else if (i < 30) {
-                x = boardWidth - cellSize - ((i - 20) * (trackWidth / 10));
-                y = boardHeight - cellSize;
+            if (cellModel.getCellType() == engine.board.CellType.ENTRY) {
+                style += " -fx-border-color: #a020f0; -fx-border-width: 3px; -fx-background-color: #e0b3ff;";
             }
-            // Left column (bottom to top)
-            else {
-                x = cellSize;
-                y = boardHeight - cellSize - ((i - 30) * (trackHeight / 10));
+            if (cellModel.isTrap()) {
+                style += " -fx-border-color: #ff0000; -fx-border-width: 3px; -fx-background-color: #ffcccc;";
             }
-
-            // Add special styling for base and safe entry cells
-            if (i % 10 == 0) {
-                style += " -fx-border-color: #1e90ff; -fx-border-width: 3px;";
-            }
-            if (i % 10 == 8) {
-                style += " -fx-border-color: #a020f0; -fx-border-width: 3px;";
-            }
-
             StackPane cell = new StackPane();
             cell.setPrefSize(cellSize, cellSize);
             cell.setStyle(style);
@@ -155,76 +151,69 @@ public class GameView {
             rectangularBoard.getChildren().add(cell);
         }
 
-        // Draw home zones (corners)
+        // Draw home zones (off the corners, more visually balanced)
         Colour[] homeColours = {Colour.BLUE, Colour.YELLOW, Colour.RED, Colour.GREEN};
         double[][] homePositions = {
-            {cellSize, cellSize}, // Top-left
-            {boardWidth - 2 * cellSize, cellSize}, // Top-right
-            {boardWidth - 2 * cellSize, boardHeight - 2 * cellSize}, // Bottom-right
-            {cellSize, boardHeight - 2 * cellSize} // Bottom-left
+            {margin - 1.5 * cellSize, margin - 1.5 * cellSize}, // Top-left
+            {boardWidth - margin + 0.5 * cellSize, margin - 1.5 * cellSize}, // Top-right
+            {boardWidth - margin + 0.5 * cellSize, boardHeight - margin + 0.5 * cellSize}, // Bottom-right
+            {margin - 1.5 * cellSize, boardHeight - margin + 0.5 * cellSize} // Bottom-left
         };
-
         for (int i = 0; i < 4; i++) {
-            StackPane home = new StackPane();
-            home.setPrefSize(cellSize, cellSize);
-            home.setStyle("-fx-background-color: " + toHex(convertColour(homeColours[i])) + "; -fx-border-color: #ff0000; -fx-border-width: 3px; -fx-background-radius: 20px; -fx-border-radius: 20px;");
-            cellViews.put("home_" + i, home);
-            final int idx = i;
-            home.setOnMouseClicked(e -> {
-                if (cellClickListener != null) cellClickListener.onCellClick("home", idx);
-            });
-            home.setLayoutX(homePositions[i][0]);
-            home.setLayoutY(homePositions[i][1]);
-            rectangularBoard.getChildren().add(home);
+            for (int j = 0; j < 4; j++) {
+                StackPane home = new StackPane();
+                home.setPrefSize(cellSize, cellSize);
+                home.setStyle("-fx-background-color: " + toHex(convertColour(homeColours[i])) + "; -fx-border-color: #ff0000; -fx-border-width: 2px; -fx-background-radius: 14px; -fx-border-radius: 14px;");
+                cellViews.put("home_" + (i * 4 + j), home);
+                final int idx = i * 4 + j;
+                home.setOnMouseClicked(e -> {
+                    if (cellClickListener != null) cellClickListener.onCellClick("home", idx);
+                });
+                double hx = homePositions[i][0] + (j % 2) * (cellSize + 4);
+                double hy = homePositions[i][1] + (j / 2) * (cellSize + 4);
+                home.setLayoutX(hx);
+                home.setLayoutY(hy);
+                rectangularBoard.getChildren().add(home);
+            }
         }
 
-        // Draw safe zones (one for each color)
-        double safeZoneSize = 4 * cellSize;
-        double[][] safeZonePositions = {
-            {boardWidth/2 - safeZoneSize/2, cellSize}, // Top
-            {boardWidth - 2 * cellSize, boardHeight/2 - safeZoneSize/2}, // Right
-            {boardWidth/2 - safeZoneSize/2, boardHeight - 2 * cellSize}, // Bottom
-            {cellSize, boardHeight/2 - safeZoneSize/2} // Left
-        };
-
+        // Draw safe zones (4 per player, off the track near entry, more harmonious offset)
         for (int i = 0; i < 4; i++) {
+            int entryIdx = ((i * 25) - 2 + 100) % 100;
+            double sx = 0, sy = 0;
+            StackPane entryCell = cellViews.get("track_" + entryIdx);
+            if (entryCell != null) {
+                sx = entryCell.getLayoutX();
+                sy = entryCell.getLayoutY();
+            }
             for (int j = 0; j < 4; j++) {
                 StackPane safeCell = new StackPane();
                 safeCell.setPrefSize(cellSize, cellSize);
-                safeCell.setStyle("-fx-background-color: #d0f5d0; -fx-border-color: #228b22; -fx-border-width: 3px; -fx-background-radius: 20px; -fx-border-radius: 20px;");
+                safeCell.setStyle("-fx-background-color: #d0f5d0; -fx-border-color: #228b22; -fx-border-width: 2px; -fx-background-radius: 14px; -fx-border-radius: 14px;");
                 cellViews.put("safe_" + (i * 4 + j), safeCell);
                 final int idx = i * 4 + j;
                 safeCell.setOnMouseClicked(e -> {
                     if (cellClickListener != null) cellClickListener.onCellClick("safe", idx);
                 });
-                
-                // Position cells in a line based on their zone
-                if (i == 0) { // Top
-                    safeCell.setLayoutX(safeZonePositions[i][0] + j * cellSize);
-                    safeCell.setLayoutY(safeZonePositions[i][1]);
-                } else if (i == 1) { // Right
-                    safeCell.setLayoutX(safeZonePositions[i][0]);
-                    safeCell.setLayoutY(safeZonePositions[i][1] + j * cellSize);
-                } else if (i == 2) { // Bottom
-                    safeCell.setLayoutX(safeZonePositions[i][0] + j * cellSize);
-                    safeCell.setLayoutY(safeZonePositions[i][1]);
-                } else { // Left
-                    safeCell.setLayoutX(safeZonePositions[i][0]);
-                    safeCell.setLayoutY(safeZonePositions[i][1] + j * cellSize);
-                }
+                double offset = (j + 1.2) * cellSize * 1.15;
+                double angle = Math.PI / 2 * i;
+                double scx = sx + Math.cos(angle) * offset;
+                double scy = sy + Math.sin(angle) * offset;
+                safeCell.setLayoutX(scx);
+                safeCell.setLayoutY(scy);
                 rectangularBoard.getChildren().add(safeCell);
             }
         }
 
         // Central firepit
         StackPane firepit = new StackPane();
-        firepit.setPrefSize(200, 200);
+        firepit.setPrefSize(160, 160);
         firepit.setStyle("-fx-background-color: #8b6f3e; -fx-border-color: #5a3c0a; -fx-border-width: 4px; -fx-background-radius: 10px; -fx-border-radius: 10px;");
         Label firepitLabel = new Label("Firepit");
-        firepitLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 24px; -fx-text-fill: #fff;");
+        firepitLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 22px; -fx-text-fill: #fff;");
         firepit.getChildren().add(firepitLabel);
-        firepit.setLayoutX(boardWidth/2 - 100);
-        firepit.setLayoutY(boardHeight/2 - 100);
+        firepit.setLayoutX(boardWidth/2 - 80);
+        firepit.setLayoutY(boardHeight/2 - 80);
         rectangularBoard.getChildren().add(firepit);
     }
 
@@ -277,7 +266,7 @@ public class GameView {
         VBox cpu2Area = createPlayerArea("CPU 2", Colour.YELLOW, true);
         VBox cpu3Area = createPlayerArea("CPU 3", Colour.RED, true);
         StackPane boardPane = new StackPane(board);
-        boardPane.setPrefSize(800, 800);
+        boardPane.setPrefSize(900, 900);
         BorderPane mainPane = new BorderPane();
         mainPane.setCenter(boardPane);
         mainPane.setBottom(userArea);
