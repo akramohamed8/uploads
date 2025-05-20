@@ -34,7 +34,7 @@ public class Main extends Application {
 
             // Initialize game components
             game = new Game(playerName);
-            view = new GameView();
+            view = new GameView(game.getBoard());
             controller = new GameController(game, view);
 
             // Set up the scene
