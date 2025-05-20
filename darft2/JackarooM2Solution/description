@@ -1,0 +1,193 @@
+Game Description
+
+This document provides a detailed description of the game elements and gameplay. It does not contain any implementation or coding details.
+
+1 Introduction
+
+Jackaroo is a beloved strategic board/card game with deep roots in Middle Eastern culture, particularly in the Gulf region. It is Known for its unique blend of marbles, cards, and tactical gameplay. Jackaroo challenges players to think critically, plan strategically, and adapt to everchanging scenarios. Its balance of skill, strategy, and luck makes it a favorite for both casual and competitive players.
+
+Our Unique Spin on Jackaroo
+
+Traditionally, Jackaroo is a multiplayer game played by 2 to 8 players in teams of two. HOWEVER, for the scope of this project, Jackaroo will be reimagined as a single-player experience, where the player is only responsible for their own marbles playing against 3 CPU players.
+
+This is not just a recreation of the traditional game. As part of this project, we will design our own new version of Jackaroo, complete with custom rules and mechanics, to add a fresh twist to this classic. This adaptation will:
+
+Introduce new cards and rules that enhance gameplay and bring innovative challenges.
+Feature customized mechanics to make the game more dynamic and exciting, tailored for a single-player experience.
+2 Game Overview
+
+Figure 1: General Board Layout
+
+2.1 Game Setup
+
+Players: The game is played by one humanoid player against 3 computerized players (CPU).
+Board: The board features a main track alongside special "Zones" and "Cells," tailored for each player.
+Deck: The game features a general collection of cards throughout the game.
+Firepit: A designated area that serves as the discard pile for played cards.
+Marbles: Each player has a set of unique colored marbles (4 per player).
+Cards: At the beginning of each round, players are dealt a hand of four cards.
+2.2 Player Special Zones / Cells
+
+Figure 2: Player Zones
+
+Home Zone:
+i. At the start of the game, each player's marbles are placed in their Home Zone, held by the player that owns the marbles. Marbles in their Home Zone are in an inactive state, meaning they cannot be moved or swapped.
+ii. A marble may only leave the Home Zone and enter the general game track by playing an Ace or King card.
+iii. If a marble is hit by (i.e., landed over by) another player's marble on the track, then the other player's marble gets destroyed returning back to the Home Zone.
+Safe Zone:
+i. Moving into the Safe Zone must be by exact count, based on the card played.
+ii. Marbles may move forward within the Safe Zone to the next empty Safe cell.
+iii. Once a marble enters the Safe Zone, it is Safe and cannot return back to the general track.
+iv. This Zone is immune to interference, preventing opponents from landing on or removing marbles.
+Base Cell:
+i. Serves as the initial position on the track where marbles begin their journey.
+ii. Marbles gets removed from the Home Zone to be placed on the Base cell by playing an Ace or King.
+iii. A marble in its player's Base cell prevents other marbles from passing or swapping positions with it.
+iv. The Base cells of the players are placed 25 cells apart along the track, as shown in Figure 2.
+Safe Zone Entry:
+i. This is a single track cell located just before a player's Safe Zone. It is positioned two cells before a player's Base cell, as shown in Figure 2.
+ii. A marble stationed at the Safe Zone Entry cell prevents all other marbles from advancing into the Safe Zone following the Safe Zone Entry cell.
+2.3 General Game Elements
+
+Track:
+i. A 100-cell track where gameplay unfolds, allowing for marble movement, swaps, and eliminations. Note that neither "Safe Zone" nor "Home Zone" are included in the regular main track.
+ii. Track cells vary and may be categorized as Normal, Base, or Entry to the corresponding Safe Zone.
+iii. Marbles progress in a clockwise direction from their players' Base cells until they reach their respective Safe Zones.
+Trap Cells:
+i. Any Normal track cell can potentially be a trap cell.
+ii. Landing on a trap cell destroys a marble sending it back to its player's Home Zone.
+iii. There are eight trap cells, whose positions are randomly determined at the start of the game.
+iv. The location of a trap cell changes each time a marble gets destroyed by it.
+Fire Pit:
+i. Played or discarded cards are thrown there.
+ii. Used to refill the deck of cards once it gets empty.
+Deck:
+i. A specially designed deck of 102 cards is used for game play.
+ii. The deck is comprised of 15 different types of cards, including the standard playing card ranks (Ace to King) and two wild cards.
+iii. Each card type and suit, has a specific frequency with which it appears in the 102card deck.
+iv. The cards information and frequency are found in a file named Cards.csv.
+Below is an example of the structure of the CSV alongside its header:
+
+
+Code	Frequency	Name	Description	Rank	Suit
+0	3	Two	Moves 2 steps	2	SPADE
+Note: The header for Cards.csv is not displayed within the file itself but the data adheres to the header above.
+
+Code: Represents a unique identifier for each special type of card. (Check detailed Card Table in Figure 4)
+
+Frequency: Indicates the number of times each card appears in the 102-card deck.
+
+Name: The designated name of the card.
+
+Description: Describes the card's action within the game.
+
+Rank: Denotes the card's number, where applicable. Recall that Jack, Queen, and King cards have ranks 11,12 , and 13 respectively.
+
+Suit: Standard suits include Spade, Club, Diamond, and Heart.
+
+N.B.: Wild cards lack both rank and suit.
+
+3 Game Objective
+
+As a player participating in the game, the goal is to move all of my own four marbles from my own Home Zone to my own Safe Zone before opponents do. Marbles first need to be fielded from my own Home Zone into my own Base cell, after that the marble is then able to move on track in a clockwise direction until it reaches my own Safe Zone.
+
+a) Marbles gets fielded from Home Zone to Base Cell
+
+b) Marbles move clockwise across the track
+
+c) Marble reaches a Safe Zone Cell
+
+d) All marbles reaches Safe Zone and the game is won
+
+4 Game Dynamics
+
+Initiation: As a player, the game starts with entering my name and getting admitted to the board alongside three computerized players. Each of the four players is assigned a unique color. This color serves as their identifier and corresponds to their specific Zones and marbles on the board.
+Round Structure: The game is organized into rounds, each consisting of four turns per player proceeding in a sequential clockwise manner. Each round completes once all players have used their entire hand of four cards. Rounds continue until a winning condition is met.
+Card Distribution: At the beginning of each round, every player is dealt four cards, which are used to perform actions during their turns.
+Turn Dynamics: During each turn, a player must strategically select and play one card from their hand, executing their actions on their own marbles, other players' marbles or other players based on the card played. If the selected card is non-playable, meaning its action is invalid in the current turn, the game notifies the player of the invalid action, and the card is then discarded into the firepit. The turn concludes, and play proceeds to the next player in the clockwise sequence.
+Strategic Choices: Decisions are made based on the player's position, the positions of other players' marbles, and potential game dynamics, enhancing the strategic component of the game.
+CPU Turns: After the human player completes their turn, the CPU players randomly select a card from their hand each turn and execute the corresponding action. If the action involves marbles, the CPU also selects the appropriate marbles to apply the action to.
+5 Game Rules
+
+5.1 Marble Movement
+
+Basic Movement: Marbles move according to the rank (number) of the played card from a "start position" towards a specified "target position" along a certain path.
+Collision: If the "target position" is occupied by another player's marble, only that other player's marble gets destroyed (i.e. sent back to the Home Zone). However, in case of King (i.e., if the basic movement was according to the rank of a King card), then all marbles in the path from "start position" till reaching the "target position" (inclusive) are destroyed.
+Trap Cells: If a marble of a player lands on a trap cell, it is destroyed and sent back to its player's Home Zone.
+Valid Moves: A marble can only move to a "target position" if the move count dictated by the card's rank is exact, and the path is clear according to the rules given below.
+Invalid Moves:
+Self-Blocking: A marble cannot move if there is another marble owned by the same player either in its path or at the target position. Meaning, I, as a player cannot bypass or destroy my own marble.
+Path Blockage: Movement is invalid if there is more than one marble (owned by any player) blocking the path.
+Safe Zone Entry: A marble cannot enter its player's Safe Zone if any marble is stationed at its player's Safe Zone Entry.
+Base Cell Blockage: A marble's movement is blocked if another player's marble is in its player's Base cell, either in the path or target position.
+Rule Breakage: Special cards can break some of the movement rules (detailed individually for each card later)
+a) Yellow marble path is blocked by two marties trying to play a 9.
+b) Yellow marble path is blocked by a marble in its player's Base Cel trying to play a 9.
+c) Red martie cannot move into is Sale Zone as more is a marble in its player's Safe Zone Entry.
+Figure 3: Some Invalid Moves illustration
+5.2 Marble Swapping
+
+Basic Swapping: Players can swap one of their marbles with another player's marble on the track, provided the conditions for a "Valid Swap" are met.
+Valid Swap: A player can swap their marble with another player's marble using a Jack, if the other player's marble is located on the general track and not in a Base cell.
+Invalid Swap:
+Track Marbles: Swapping is prohibited if either of the involved marbles are not on the general track (i.e. in Home Zone or Safe Zone).
+Base Cell Position: swapping is invalid if the other marble (belonging to the other player) is positioned in its Base cell.
+Same Player Ownership: Marbles owned by the same player are ineligible for swapping. This is meaningless, anyway, as nothing will be changed.
+5.3 Marble Fielding
+
+Basic Fielding: A marble is placed on the board by simply moving it from the player's Home Zone to the player's Base cell.
+Valid Fielding: A marble can be fielded onto the board using either an Ace or a King, provided (i) there are unfielded marbles available in the player's Home Zone and (ii) the Base cell is not occupied by another marble belonging to the same player.
+Invalid Fielding:
+Home Zone Availability: A player must have available marbles in the Home Zone to field onto the board.
+Base Cell Occupancy: A player's marble cannot be fielded if the player's Base cell is already occupied by another of their own marbles.
+5.4 Marble Burning
+
+Basic Burning: Marble burning refers to destroying an opponent's marble from the board track (i.e. sending it back to its owning player's Home Zone).
+Valid Burn: An opponent marble of choice can be burned by the "Burner Wild Card" given that the marble is on track and not on a Base cell.
+Invalid Burn:
+Owner Protection: A player cannot burn their own marble; only opponent marbles are eligible targets for burning.
+Zone Immunity: Marbles that are in their Home Zone or Safe Zone are immune to burning.
+Base Cell Position: Marbles that are in their Base cell are immune to burning.
+5.5 Marble Saving
+
+Basic Saving: Marble saving involves relocating a player's marble from the game track to a randomly selected, empty Safe cell in the Safe Zone that belongs to the marble's owner.
+Valid Saving: A player can save their own marble using the "Saver Wild Card" if the marble is on any track cell, including the Base cell.
+Invalid Saving:
+Opponent's Marbles: The Saver Wild Card cannot be used to save an opponent's marble; it is strictly applicable to the player's own marbles.
+Already Safe Marbles: Marbles already in a Safe Zone cannot be selected for saving.
+Home Zone Marbles: Marbles in the Home Zone cannot be saved by the Saver Wild Card, as they have not yet been fielded to the game track.
+5.6 Card Discarding and Skipping Turns
+
+Basic Discarding: This action refers to the removal of a card by a player from an opponent's hand and skipping the latter's turn.
+Valid Discard: A player can discard a card from an opponent's hand using a "Ten" or "Queen," provided the opponent has cards available to be discarded.
+Invalid Discard and Turn Skip:
+Self-Targeting: Players cannot use this type of action cards on themselves; these actions are only applicable to opponents.
+Empty Hand: Discarding a card from an opponent's hand is invalid if the opponent has no cards left.
+5.7 Card Actions
+
+Cards allow players to perform various actions, either to marbles or other players. Figure 4 gives a table that details all card actions for this game.
+
+Choice of Action: When a card provides multiple options, players select the appropriate action by choosing the necessary number of marbles:
+Normal Movement: Requires the selection of one marble.
+Swapping or Splitting Movement: Requires the selection of two marbles.
+Discarding or Fielding New Marble: Does not require selecting any marbles.
+
+Card Code	Card Type	Action Description
+Standard Special Actions		
+0	STANDARD	- Moves one of your own marbles a number of forward steps based on the rank (number) on the cards adhering to all movement rules.
+1	ACE	- Fields a marble from the Home Zone adhering to fielding rules. OR - Acts as a standard card.
+13	KING	- Fields a marble from the Home Zone adhering to fielding rules. OR - Moves one of your own marbles 13 steps forward destroying all marbles in its path. It also bypasses the first three rules for invalid moves (Self-Blocking, Path Blockage, and Safe Zone Entry).
+12	QUEEN	- A random card is discarded from a random player's hand and skips his turn adhering to discarding / skipping rules. - Acts as a standard card.
+11	JACK	- Swaps one of your own marbles with another adhering to swapping rules. OR - Acts as a standard card.
+4	FOUR	- Moves one of your own marbles 4 steps BACKWARDS adhering to movement rules.
+5	FIVE	- Moves any marble on track 5 steps adhering to movement rules.
+7	SEVEN	- Moves two of your own marbles a total of 7 forward steps adhering to movement rules according to a chosen split distance from 1 to 6. OR - Acts as a standard card.
+10	TEN	- A random card is discarded from the next player's hand and skips his turn adhering to discarding / skipping rules. OR - Acts as a standard card.
+Wild Special Actions		
+14	BURNER	- Sends an opponent's marble back to its player's Home Zone adhering to all burning rules.
+15	SAVER	- Sends one of your own marbles to one of your own random empty Safe Zone cell adhering to all saving rules.
+Figure 4: Detailed Card Actions Table
+
+6 Winning the Game
+
+The first player to move all their marbles into their Safe Zone wins the game. Otherwise, the game rounds carry on.
