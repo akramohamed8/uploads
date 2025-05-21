@@ -4,6 +4,7 @@ import javafx.scene.layout.*;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.geometry.*;
 import javafx.scene.Node;
 import javafx.scene.text.Font;
@@ -12,11 +13,20 @@ import javafx.animation.*;
 import javafx.util.Duration;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.effect.Glow;
+import javafx.scene.effect.BlurType;
+import javafx.scene.effect.Light;
+import javafx.scene.effect.Lighting;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.control.ProgressBar;
+import javafx.stage.Stage;
+import javafx.scene.Scene;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -37,9 +47,17 @@ public class GameView {
     private ProgressBar computerTurnProgress;
     private BiConsumer<String, Integer> cellClickListener;
     private Consumer<Card> cardClickListener;
+    private Consumer<KeyEvent> keyEventHandler;
+    private Stage mainStage;
+    private List<Integer> trapCells = new ArrayList<>();
+    private Random random = new Random();
     
     // Map to store cell views for easy access
     public Map<String, StackPane> cellViews = new HashMap<>();
+    
+    // Track selected elements
+    private Card selectedCard;
+    private List<String> selectedMarbles = new ArrayList<>();
     
     // Color mapping
     private final Map<Colour, javafx.scene.paint.Color> colorMapping = Map.of(
@@ -51,6 +69,24 @@ public class GameView {
 
     public GameView() {
         initializeView();
+        initializeTrapCells();
+    }
+    
+    public void setMainStage(Stage stage) {
+        this.mainStage = stage;
+        
+        // Add key event handler to the scene
+        Scene scene = mainStage.getScene();
+        if (scene != null) {
+            scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                if (event.getCode() == KeyCode.F) {
+                    // Trigger field action when 'F' is pressed
+                    if (keyEventHandler != null) {
+                        keyEventHandler.accept(event);
+                    }
+                }
+            });
+        }
     }
     
     private void initializeView() {
@@ -78,6 +114,42 @@ public class GameView {
         statusLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
         statusLabel.setPadding(new Insets(5));
         root.setTop(statusLabel);
+    }
+    
+    private void initializeTrapCells() {
+        // Randomly place trap cells on the track (avoid base cells and safe zone entries)
+        List<Integer> invalidPositions = List.of(0, 5, 25, 30, 50, 55, 75, 80);
+        
+        // Create 8 trap cells
+        while (trapCells.size() < 8) {
+            int position = random.nextInt(100);
+            if (!invalidPositions.contains(position) && !trapCells.contains(position)) {
+                trapCells.add(position);
+                // Mark trap cells visually
+                markTrapCell(position, true);
+            }
+        }
+    }
+    
+    private void markTrapCell(int position, boolean isTrap) {
+        String key = "track_" + position;
+        if (cellViews.containsKey(key)) {
+            StackPane cell = cellViews.get(key);
+            if (isTrap) {
+                // Subtle indicator for trap cell
+                Rectangle trapMarker = new Rectangle(10, 10);
+                trapMarker.setFill(Color.RED);
+                trapMarker.setOpacity(0.3);
+                trapMarker.getStyleClass().add("trap-marker");
+                
+                // Position the marker in the bottom-right corner
+                StackPane.setAlignment(trapMarker, Pos.BOTTOM_RIGHT);
+                cell.getChildren().add(trapMarker);
+            } else {
+                // Remove trap marker
+                cell.getChildren().removeIf(node -> node.getStyleClass().contains("trap-marker"));
+            }
+        }
     }
     
     private void createBoardLayout() {
@@ -203,6 +275,9 @@ public class GameView {
                 
                 cell.getChildren().add(marble);
                 marbleRow.getChildren().add(cell);
+                
+                // Store cell view for reference
+                cellViews.put("home_" + (i * 4 + j), cell);
             }
             
             homeZone.getChildren().add(marbleRow);
@@ -334,9 +409,25 @@ public class GameView {
         cardDescription.setPrefHeight(150);
         cardDescription.setWrapText(true);
         
+        // Selection info
+        Label selectionHeader = new Label("Current Selection");
+        selectionHeader.setFont(Font.font("System", FontWeight.BOLD, 14));
+        
+        Label selectionInfo = new Label("No card or marbles selected");
+        selectionInfo.setId("selectionInfo");
+        selectionInfo.setWrapText(true);
+        
+        // Keyboard shortcuts info
+        Label shortcutsHeader = new Label("Keyboard Shortcuts");
+        shortcutsHeader.setFont(Font.font("System", FontWeight.BOLD, 14));
+        
+        Label shortcutsInfo = new Label("F - Field a marble using Ace or King");
+        shortcutsInfo.setWrapText(true);
+        
         playerInfo.getChildren().addAll(
             infoHeader, currentPlayerLabel, turnCountLabel, nextPlayerLabel, 
-            computerTurnProgress, separator, cardDescriptionHeader, cardDescription
+            computerTurnProgress, separator, cardDescriptionHeader, cardDescription,
+            selectionHeader, selectionInfo, shortcutsHeader, shortcutsInfo
         );
     }
     
@@ -403,6 +494,19 @@ public class GameView {
         cell.setOnMouseClicked(event -> {
             if (cellClickListener != null) {
                 cellClickListener.accept(zone, position);
+                
+                // Update selection for this cell
+                String key = zone + "_" + position;
+                if (selectedMarbles.contains(key)) {
+                    selectedMarbles.remove(key);
+                    highlightCell(zone, position, false);
+                } else {
+                    selectedMarbles.add(key);
+                    highlightCell(zone, position, true);
+                }
+                
+                // Update selection info
+                updateSelectionInfo();
             }
         });
         
@@ -462,6 +566,9 @@ public class GameView {
             VBox cardView = createCardView(card);
             cardArea.getChildren().add(cardView);
         }
+        
+        // Reset selected card
+        selectedCard = null;
     }
     
     private VBox createCardView(Card card) {
@@ -487,6 +594,31 @@ public class GameView {
         cardBox.setOnMouseClicked(event -> {
             if (cardClickListener != null) {
                 cardClickListener.accept(card);
+                
+                // Handle selection logic
+                if (selectedCard == card) {
+                    // Deselect the card
+                    selectedCard = null;
+                    highlightCard(card, false);
+                } else {
+                    // If there was a previously selected card, deselect it
+                    if (selectedCard != null) {
+                        highlightCard(selectedCard, false);
+                    }
+                    
+                    // Select the new card
+                    selectedCard = card;
+                    highlightCard(card, true);
+                    
+                    // Show split distance input if it's a Seven card
+                    showSplitDistanceInput(card.getName().equals("Seven"));
+                }
+                
+                // Update card description
+                updateCardDescription(selectedCard);
+                
+                // Update selection info
+                updateSelectionInfo();
             }
         });
         
@@ -545,6 +677,35 @@ public class GameView {
         }
     }
     
+    public void updateSelectionInfo() {
+        Label selectionInfo = (Label) findNodeById(playerInfo, "selectionInfo");
+        if (selectionInfo != null) {
+            StringBuilder info = new StringBuilder();
+            
+            if (selectedCard != null) {
+                info.append("Selected Card: ").append(selectedCard.getName()).append(" of ").append(selectedCard.getSuit()).append("\n");
+            } else {
+                info.append("No card selected\n");
+            }
+            
+            if (!selectedMarbles.isEmpty()) {
+                info.append("Selected Marbles: ");
+                for (int i = 0; i < selectedMarbles.size(); i++) {
+                    String[] parts = selectedMarbles.get(i).split("_");
+                    info.append(parts[0]).append(" ").append(parts[1]);
+                    
+                    if (i < selectedMarbles.size() - 1) {
+                        info.append(", ");
+                    }
+                }
+            } else {
+                info.append("No marbles selected");
+            }
+            
+            selectionInfo.setText(info.toString());
+        }
+    }
+    
     public void updateMarble(String zone, int position, Colour colour) {
         String key = zone + "_" + position;
         if (zone.equals("safe")) {
@@ -566,172 +727,4 @@ public class GameView {
         // Remove any existing marble
         cell.getChildren().removeIf(node -> node instanceof Circle);
         
-        if (colour != null) {
-            // Add new marble
-            Circle marble = new Circle(15);
-            marble.setFill(colorMapping.get(colour));
-            marble.setStroke(Color.BLACK);
-            marble.setStrokeWidth(1);
-            
-            // Add drop shadow for 3D effect
-            DropShadow dropShadow = new DropShadow();
-            dropShadow.setColor(Color.BLACK);
-            dropShadow.setRadius(5);
-            marble.setEffect(dropShadow);
-            
-            cell.getChildren().add(marble);
-        }
-    }
-    
-    public void highlightCell(String zone, int position, boolean highlight) {
-        String key = zone + "_" + position;
-        
-        if (zone.equals("safe")) {
-            // For safe zones, try to find by current player's color
-            for (Colour c : Colour.values()) {
-                String safeKey = "safe_" + position + "_" + c;
-                if (cellViews.containsKey(safeKey)) {
-                    StackPane cell = cellViews.get(safeKey);
-                    if (highlight) {
-                        // Add glow effect
-                        Glow glow = new Glow(0.8);
-                        cell.setEffect(glow);
-                        cell.setStyle(cell.getStyle() + "; -fx-border-color: yellow; -fx-border-width: 2;");
-                    } else {
-                        cell.setEffect(null);
-                        // Remove yellow border but keep original style
-                        String style = cell.getStyle().replace("; -fx-border-color: yellow; -fx-border-width: 2", "");
-                        cell.setStyle(style);
-                    }
-                }
-            }
-        } else if (cellViews.containsKey(key)) {
-            StackPane cell = cellViews.get(key);
-            if (highlight) {
-                // Add glow effect
-                Glow glow = new Glow(0.8);
-                cell.setEffect(glow);
-                cell.setStyle(cell.getStyle() + "; -fx-border-color: yellow; -fx-border-width: 2;");
-            } else {
-                cell.setEffect(null);
-                // Remove yellow border but keep original style
-                String style = cell.getStyle().replace("; -fx-border-color: yellow; -fx-border-width: 2", "");
-                cell.setStyle(style);
-            }
-        }
-    }
-    
-    public void highlightCard(Card card, boolean highlight) {
-        for (Node node : cardArea.getChildren()) {
-            if (node instanceof VBox) {
-                VBox cardBox = (VBox) node;
-                if (cardBox.getUserData() == card) {
-                    if (highlight) {
-                        // Add glow effect
-                        Glow glow = new Glow(0.8);
-                        cardBox.setEffect(glow);
-                        cardBox.setStyle(cardBox.getStyle() + "; -fx-border-color: yellow; -fx-border-width: 2;");
-                    } else {
-                        cardBox.setEffect(null);
-                        // Remove yellow border but keep original style
-                        String style = cardBox.getStyle().replace("; -fx-border-color: yellow; -fx-border-width: 2", "");
-                        cardBox.setStyle(style);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-    
-    public void highlightValidMoves(List<String> validMoves) {
-        // Clear all highlights first
-        for (StackPane cell : cellViews.values()) {
-            String style = cell.getStyle().replace("; -fx-background-color: rgba(0,255,0,0.3)", "");
-            cell.setStyle(style);
-        }
-        
-        // Highlight valid moves
-        for (String move : validMoves) {
-            String[] parts = move.split("_");
-            if (parts.length >= 2) {
-                String zone = parts[0];
-                int position = Integer.parseInt(parts[1]);
-                
-                String key = zone + "_" + position;
-                
-                if (zone.equals("safe")) {
-                    // For safe zones, highlight in all colors
-                    for (Colour c : Colour.values()) {
-                        String safeKey = "safe_" + position + "_" + c;
-                        if (cellViews.containsKey(safeKey)) {
-                            StackPane cell = cellViews.get(safeKey);
-                            cell.setStyle(cell.getStyle() + "; -fx-background-color: rgba(0,255,0,0.3)");
-                        }
-                    }
-                } else if (cellViews.containsKey(key)) {
-                    StackPane cell = cellViews.get(key);
-                    cell.setStyle(cell.getStyle() + "; -fx-background-color: rgba(0,255,0,0.3)");
-                }
-            }
-        }
-    }
-    
-    public void showSplitDistanceInput(boolean show) {
-        splitDistanceCombo.setVisible(show);
-        // Alternatively, use text field:
-        // splitDistanceField.setVisible(show);
-    }
-    
-    public String getSplitDistance() {
-        if (splitDistanceCombo.isVisible()) {
-            return splitDistanceCombo.getValue();
-        }
-        // If using text field:
-        // if (splitDistanceField.isVisible()) {
-        //     return splitDistanceField.getText();
-        // }
-        return null;
-    }
-    
-    public void showComputerTurnProgress(boolean show) {
-        computerTurnProgress.setVisible(show);
-    }
-    
-    public void updateComputerTurnProgress(double progress) {
-        computerTurnProgress.setProgress(progress);
-    }
-    
-    // Animation methods
-    public void animateMarbleMove(String fromZone, int fromPos, String toZone, int toPos, Colour colour) {
-        // Find source and target cells
-        StackPane sourceCell = null;
-        StackPane targetCell = null;
-        
-        if (fromZone.equals("home")) {
-            String key = fromZone + "_" + fromPos;
-            sourceCell = cellViews.get(key);
-        } else if (fromZone.equals("safe")) {
-            String safeKey = "safe_" + fromPos + "_" + colour;
-            sourceCell = cellViews.get(safeKey);
-        } else {
-            String key = fromZone + "_" + fromPos;
-            sourceCell = cellViews.get(key);
-        }
-        
-        if (toZone.equals("home")) {
-            String key = toZone + "_" + toPos;
-            targetCell = cellViews.get(key);
-        } else if (toZone.equals("safe")) {
-            String safeKey = "safe_" + toPos + "_" + colour;
-            targetCell = cellViews.get(safeKey);
-        } else {
-            String key = toZone + "_" + toPos;
-            targetCell = cellViews.get(key);
-        }
-        
-        if (sourceCell == null || targetCell == null) return;
-        
-        // Create a marble for animation
-        Circle marble = new Circle(15);
-        marble.setFill(colorMapping.get(colour));
-        marble.set
+        if (colour != null)
