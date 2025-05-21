@@ -744,23 +744,174 @@ public class GameController {
     }
 
     private void animateCardPlay(Card card) {
-        // Find the card view
-        for (javafx.scene.Node node : view.getCardArea().getChildren()) {
-            if (node instanceof javafx.scene.layout.HBox) {
-                javafx.scene.layout.HBox cardRow = (javafx.scene.layout.HBox) node;
-                for (javafx.scene.Node cardNode : cardRow.getChildren()) {
-                    if (cardNode instanceof javafx.scene.layout.VBox) {
-                        javafx.scene.layout.VBox cardBox = (javafx.scene.layout.VBox) cardNode;
-                        if (cardBox.getUserData() == card) {
-                            // Create scale animation
-                            ScaleTransition scaleDown = new ScaleTransition(Duration.millis(150), cardBox);
-                            scaleDown.setToX(0.8);
-                            scaleDown.setToY(0.8);
+    // Find the card view
+    for (javafx.scene.Node node : view.getCardArea().getChildren()) {
+        if (node instanceof javafx.scene.layout.HBox) {
+            javafx.scene.layout.HBox cardRow = (javafx.scene.layout.HBox) node;
+            for (javafx.scene.Node cardNode : cardRow.getChildren()) {
+                if (cardNode instanceof javafx.scene.layout.VBox) {
+                    javafx.scene.layout.VBox cardBox = (javafx.scene.layout.VBox) cardNode;
+                    if (cardBox.getUserData() == card) {
+                        // Create scale animation
+                        ScaleTransition scaleDown = new ScaleTransition(Duration.millis(150), cardBox);
+                        scaleDown.setToX(0.8);
+                        scaleDown.setToY(0.8);
+                        
+                        ScaleTransition scaleUp = new ScaleTransition(Duration.millis(150), cardBox);
+                        scaleUp.setToX(1.0);
+                        scaleUp.setToY(1.0);
+                        
+                        // Create fade animation
+                        FadeTransition fadeOut = new FadeTransition(Duration.millis(300), cardBox);
+                        fadeOut.setFromValue(1.0);
+                        fadeOut.setToValue(0.0);
+                        
+                        // Create movement animation toward the fire pit
+                        TranslateTransition moveToFirePit = new TranslateTransition(Duration.millis(400), cardBox);
+                        
+                        // Get fire pit location (assuming it's accessible from view)
+                        javafx.scene.Node firePit = view.getFirePitNode();
+                        if (firePit != null) {
+                            javafx.geometry.Bounds cardBounds = cardBox.localToScene(cardBox.getBoundsInLocal());
+                            javafx.geometry.Bounds firePitBounds = firePit.localToScene(firePit.getBoundsInLocal());
                             
-                            ScaleTransition scaleUp = new ScaleTransition(Duration.millis(150), cardBox);
-                            scaleUp.setToX(1.0);
-                            scaleUp.setToY(1.0);
-                            
-                            // Create fade animation
-                            FadeTransition fadeOut = new FadeTransition(Duration.millis(300), cardBox);
-                            fadeOut.setFromValue(1.0);
+                            moveToFirePit.setToX(firePitBounds.getCenterX() - cardBounds.getCenterX());
+                            moveToFirePit.setToY(firePitBounds.getCenterY() - cardBounds.getCenterY());
+                        } else {
+                            // If fire pit reference not available, just move down
+                            moveToFirePit.setToY(100);
+                        }
+                        
+                        // Combine animations
+                        SequentialTransition sequence = new SequentialTransition(
+                            scaleDown,
+                            scaleUp,
+                            new javafx.animation.ParallelTransition(moveToFirePit, fadeOut)
+                        );
+                        
+                        // After animation completes, remove the card from view
+                        sequence.setOnFinished(event -> {
+                            view.getCardArea().getChildren().remove(cardRow);
+                            view.updateCards(game.getPlayers().get(currentPlayerIndex).getHand());
+                        });
+                        
+                        // Play the animation
+                        sequence.play();
+                        
+                        // Optional: Add a sound effect if available
+                        try {
+                            // If sound effects are implemented
+                            // SoundManager.playSound("card_play.wav");
+                        } catch (Exception e) {
+                            // Silently ignore sound errors
+                        }
+                        
+                        // We found the card, no need to continue searching
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+    // Here's a snippet for trap cell animation you could add
+private void animateTrapTrigger(int position) {
+    Cell cell = game.getBoard().getTrack().get(position);
+    String cellKey = "track_" + position;
+    javafx.scene.Node cellNode = view.cellViews.get(cellKey);
+    
+    if (cellNode != null) {
+        // Create flash animation
+        FadeTransition flash = new FadeTransition(Duration.millis(100), cellNode);
+        flash.setFromValue(1.0);
+        flash.setToValue(0.3);
+        flash.setCycleCount(6); // Flash 3 times
+        flash.setAutoReverse(true);
+        
+        // Set cell background to red temporarily
+        String originalStyle = cellNode.getStyle();
+        cellNode.setStyle("-fx-background-color: red; " + originalStyle);
+        
+        // Reset to original style after animation
+        flash.setOnFinished(e -> cellNode.setStyle(originalStyle));
+        flash.play();
+    }
+}
+
+// For win condition popup
+private void checkWinCondition() {
+    for (Player player : game.getPlayers()) {
+        if (game.hasPlayerWon(player)) {
+            // Use Platform.runLater to ensure UI updates happen on JavaFX thread
+            Platform.runLater(() -> {
+                Alert winAlert = new Alert(AlertType.INFORMATION);
+                winAlert.setTitle("Game Over");
+                winAlert.setHeaderText("We Have a Winner!");
+                winAlert.setContentText(player.getName() + " (" + player.getColour() + ") has won the game!");
+                
+                // Add some styling to the alert
+                DialogPane dialogPane = winAlert.getDialogPane();
+                dialogPane.getStyleClass().add("win-dialog");
+                dialogPane.setStyle("-fx-background-color: #FFFAD7;");
+                
+                winAlert.showAndWait();
+                
+                // Ask if player wants to play again
+                Alert playAgainAlert = new Alert(AlertType.CONFIRMATION,
+                    "Would you like to play again?", ButtonType.YES, ButtonType.NO);
+                playAgainAlert.setTitle("Play Again?");
+                
+                Optional<ButtonType> result = playAgainAlert.showAndWait();
+                if (result.isPresent() && result.get() == ButtonType.YES) {
+                    // Reset game
+                    game.resetGame();
+                    currentPlayerIndex = 0;
+                    clearSelections();
+                    updateGameView();
+                    initializeGame();
+                } else {
+                    // Exit game
+                    Platform.exit();
+                }
+            });
+            break;
+        }
+    }
+}
+
+// For marble movement animation
+private void animateMarbleMovement(Marble marble, String fromZone, int fromPos, 
+                                  String toZone, int toPos) {
+    javafx.scene.Node sourceNode = view.cellViews.get(fromZone + "_" + fromPos);
+    javafx.scene.Node targetNode = view.cellViews.get(toZone + "_" + toPos);
+    
+    if (sourceNode != null && targetNode != null) {
+        // Create a temporary marble node for animation
+        javafx.scene.shape.Circle tempMarble = new javafx.scene.shape.Circle(15);
+        tempMarble.setFill(javafx.scene.paint.Color.valueOf(marble.getColour().toString()));
+        tempMarble.setStroke(javafx.scene.paint.Color.BLACK);
+        tempMarble.setStrokeWidth(2);
+        
+        // Add to root pane for animation
+        javafx.scene.layout.Pane rootPane = view.getRoot();
+        rootPane.getChildren().add(tempMarble);
+        
+        // Calculate start position (global coordinates)
+        javafx.geometry.Bounds sourceBounds = sourceNode.localToScene(sourceNode.getBoundsInLocal());
+        javafx.geometry.Bounds targetBounds = targetNode.localToScene(targetNode.getBoundsInLocal());
+        javafx.geometry.Bounds rootBounds = rootPane.localToScene(rootPane.getBoundsInLocal());
+        
+        tempMarble.setCenterX(sourceBounds.getCenterX() - rootBounds.getMinX());
+        tempMarble.setCenterY(sourceBounds.getCenterY() - rootBounds.getMinY());
+        
+        // Create transition to target
+        TranslateTransition transition = new TranslateTransition(Duration.millis(500), tempMarble);
+        transition.setToX(targetBounds.getCenterX() - sourceBounds.getCenterX());
+        transition.setToY(targetBounds.getCenterY() - sourceBounds.getCenterY());
+        
+        // Remove temporary node when done
+        transition.setOnFinished(e -> rootPane.getChildren().remove(tempMarble));
+        transition.play();
+    }
+}
+}
